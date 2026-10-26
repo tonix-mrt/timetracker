@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Arbeitszeit-Tracker mit Feierabend-Timer</title>
+  <title>Arbeitszeit-Tracker mit Live-Countdown</title>
   <style>
     :root {
       --bg: #f4f6f8;
@@ -83,14 +83,14 @@
       background: var(--positive);
       height: 100%;
       width: 0%;
-      transition: width 0.3s ease;
+      transition: width 0.2s ease;
     }
 
     .form-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
       gap: 1rem;
-      margin-bottom: 1.25rem;
+      margin-bottom: 0.75rem;
     }
 
     .field {
@@ -115,6 +115,26 @@
     input:focus {
       outline: 2px solid var(--primary);
       border-color: transparent;
+    }
+
+    .quick-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 1rem;
+    }
+
+    .btn-link {
+      background: none;
+      border: none;
+      color: var(--primary);
+      font-size: 0.82rem;
+      cursor: pointer;
+      text-decoration: underline;
+      padding: 0;
+    }
+
+    .btn-link:hover {
+      color: var(--primary-hover);
     }
 
     .btn-primary {
@@ -147,313 +167,3 @@
 
     .summary-label {
       font-size: 0.8rem;
-      color: #64748b;
-      margin-bottom: 0.25rem;
-    }
-
-    .summary-value {
-      font-size: 1.2rem;
-      font-weight: 700;
-    }
-
-    .positive { color: var(--positive); }
-    .negative { color: var(--negative); }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.9rem;
-    }
-
-    th, td {
-      padding: 0.6rem 0.5rem;
-      text-align: left;
-      border-bottom: 1px solid var(--border);
-    }
-
-    th {
-      color: #64748b;
-      font-weight: 600;
-    }
-
-    .btn-delete {
-      background: transparent;
-      color: var(--negative);
-      border: none;
-      cursor: pointer;
-      padding: 0.2rem 0.5rem;
-      font-size: 0.8rem;
-    }
-
-    .btn-delete:hover {
-      text-decoration: underline;
-    }
-  </style>
-</head>
-<body>
-
-  <div class="container">
-    <h1>Arbeitszeit-Tracker</h1>
-
-    <!-- Live Feierabend-Timer -->
-    <div class="timer-widget">
-      <div class="timer-label" id="timerHeading">Verbleibende Zeit bis Feierabend</div>
-      <div class="timer-countdown" id="timerCountdown">--:--:--</div>
-      <div class="timer-sub" id="timerTargetTime">Geplanter Feierabend: --:--</div>
-      <div class="progress-bar-bg">
-        <div class="progress-bar-fill" id="progressFill"></div>
-      </div>
-    </div>
-
-    <!-- Eingabeformulare -->
-    <div class="form-grid">
-      <div class="field">
-        <label for="entryDate">Datum</label>
-        <input type="date" id="entryDate">
-      </div>
-      <div class="field">
-        <label for="startTime">Anfangszeit</label>
-        <input type="time" id="startTime" value="08:00">
-      </div>
-      <div class="field">
-        <label for="endTime">Endzeit (Ist)</label>
-        <input type="time" id="endTime" value="16:30">
-      </div>
-      <div class="field">
-        <label for="breakTime">Pause (Minuten)</label>
-        <input type="number" id="breakTime" value="30" min="0" step="5">
-      </div>
-    </div>
-
-    <button class="btn-primary" onclick="addEntry()">Eintrag in Historie speichern</button>
-
-    <!-- Vorschau für manuelle Eingabe -->
-    <div class="summary-card">
-      <div>
-        <div class="summary-label">Soll</div>
-        <div class="summary-value">08:00 h</div>
-      </div>
-      <div>
-        <div class="summary-label">Ist (Vorschau)</div>
-        <div class="summary-value" id="previewWork">08:00 h</div>
-      </div>
-      <div>
-        <div class="summary-label">Differenz</div>
-        <div class="summary-value" id="previewDiff">±00:00 h</div>
-      </div>
-    </div>
-
-    <!-- Tabelle gespeicherter Tage -->
-    <table>
-      <thead>
-        <tr>
-          <th>Datum</th>
-          <th>Arbeitszeit</th>
-          <th>Pause</th>
-          <th>Netto</th>
-          <th>Diff.</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody id="entriesTable"></tbody>
-    </table>
-  </div>
-
-  <script>
-    const TARGET_MINUTES = 8 * 60; // 8 Stunden Arbeitszeit
-
-    document.getElementById('entryDate').valueAsDate = new Date();
-
-    const startInput = document.getElementById('startTime');
-    const endInput = document.getElementById('endTime');
-    const breakInput = document.getElementById('breakTime');
-
-    [startInput, endInput, breakInput].forEach(el => {
-      el.addEventListener('input', () => {
-        updatePreview();
-        updateLiveTimer();
-      });
-    });
-
-    function parseMinutes(timeStr) {
-      if (!timeStr) return null;
-      const [h, m] = timeStr.split(':').map(Number);
-      return h * 60 + m;
-    }
-
-    function formatHoursMinutes(totalMinutes, showSign = false) {
-      const isNegative = totalMinutes < 0;
-      const absMinutes = Math.abs(totalMinutes);
-      const h = Math.floor(absMinutes / 60).toString().padStart(2, '0');
-      const m = (absMinutes % 60).toString().padStart(2, '0');
-      
-      let sign = '';
-      if (showSign) {
-        if (totalMinutes > 0) sign = '+';
-        else if (totalMinutes < 0) sign = '-';
-        else sign = '±';
-      }
-      return `${sign}${h}:${m} h`;
-    }
-
-    // --- Feierabend Live-Timer Funktion ---
-    function updateLiveTimer() {
-      const startMin = parseMinutes(startInput.value);
-      const pauseMin = parseInt(breakInput.value, 10) || 0;
-
-      if (startMin === null) return;
-
-      // Geplante Feierabend-Uhrzeit: Startzeit + 8 Stunden + Pause
-      const totalRequiredMinutes = startMin + TARGET_MINUTES + pauseMin;
-      const endH = Math.floor(totalRequiredMinutes / 60) % 24;
-      const endM = totalRequiredMinutes % 60;
-      const targetTimeFormatted = `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
-
-      document.getElementById('timerTargetTime').textContent = `Geplanter Feierabend (8h + Pause): ${targetTimeFormatted} Uhr`;
-
-      // Aktuelle Zeit in Relation setzen
-      const now = new Date();
-      const nowMs = (now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()) * 1000;
-      const startMs = startMin * 60 * 1000;
-      const targetMs = totalRequiredMinutes * 60 * 1000;
-
-      const diffMs = targetMs - nowMs;
-      const headingEl = document.getElementById('timerHeading');
-      const countdownEl = document.getElementById('timerCountdown');
-      const progressEl = document.getElementById('progressFill');
-
-      // Prozentualer Fortschritt berechnen
-      const totalSpan = targetMs - startMs;
-      let progress = ((nowMs - startMs) / totalSpan) * 100;
-      progress = Math.max(0, Math.min(100, progress));
-      progressEl.style.width = `${progress}%`;
-
-      if (diffMs > 0) {
-        headingEl.textContent = "Verbleibende Zeit bis Feierabend";
-        const sec = Math.floor((diffMs / 1000) % 60);
-        const min = Math.floor((diffMs / (1000 * 60)) % 60);
-        const hrs = Math.floor(diffMs / (1000 * 60 * 60));
-        countdownEl.textContent = 
-          `${hrs.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
-        countdownEl.style.color = "#ffffff";
-      } else {
-        // Feierabend erreicht / Überstunden
-        headingEl.textContent = "Feierabend erreicht! (Überstunden)";
-        const overMs = Math.abs(diffMs);
-        const sec = Math.floor((overMs / 1000) % 60);
-        const min = Math.floor((overMs / (1000 * 60)) % 60);
-        const hrs = Math.floor(overMs / (1000 * 60 * 60));
-        countdownEl.textContent = 
-          `+${hrs.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
-        countdownEl.style.color = "var(--positive)";
-      }
-    }
-
-    // Timer jede Sekunde synchronisieren
-    setInterval(updateLiveTimer, 1000);
-
-    // --- Tabellen- & Speicherlogik ---
-    function calculateCurrentValues() {
-      const start = parseMinutes(startInput.value);
-      const end = parseMinutes(endInput.value);
-      const pause = parseInt(breakInput.value, 10) || 0;
-
-      if (start === null || end === null || end <= start) {
-        return null;
-      }
-
-      const grossMinutes = end - start;
-      const netMinutes = Math.max(0, grossMinutes - pause);
-      const diffMinutes = netMinutes - TARGET_MINUTES;
-
-      return { netMinutes, diffMinutes };
-    }
-
-    function updatePreview() {
-      const values = calculateCurrentValues();
-      const workEl = document.getElementById('previewWork');
-      const diffEl = document.getElementById('previewDiff');
-
-      if (!values) {
-        workEl.textContent = '--:--';
-        diffEl.textContent = '--:--';
-        diffEl.className = 'summary-value';
-        return;
-      }
-
-      workEl.textContent = formatHoursMinutes(values.netMinutes);
-      diffEl.textContent = formatHoursMinutes(values.diffMinutes, true);
-
-      diffEl.className = 'summary-value ' + (values.diffMinutes > 0 ? 'positive' : values.diffMinutes < 0 ? 'negative' : '');
-    }
-
-    function getEntries() {
-      return JSON.parse(localStorage.getItem('work_tracker_entries') || '[]');
-    }
-
-    function saveEntries(entries) {
-      localStorage.setItem('work_tracker_entries', JSON.stringify(entries));
-      renderTable();
-    }
-
-    function addEntry() {
-      const values = calculateCurrentValues();
-      if (!values) {
-        alert('Bitte gib gültige Uhrzeiten ein (Endzeit muss nach Anfangszeit liegen).');
-        return;
-      }
-
-      const date = document.getElementById('entryDate').value;
-      if (!date) {
-        alert('Bitte wähle ein Datum aus.');
-        return;
-      }
-
-      const entry = {
-        id: Date.now(),
-        date: date,
-        start: startInput.value,
-        end: endInput.value,
-        pause: parseInt(breakInput.value, 10) || 0,
-        netMinutes: values.netMinutes,
-        diffMinutes: values.diffMinutes
-      };
-
-      const entries = getEntries();
-      entries.unshift(entry);
-      saveEntries(entries);
-    }
-
-    function deleteEntry(id) {
-      const entries = getEntries().filter(e => e.id !== id);
-      saveEntries(entries);
-    }
-
-    function renderTable() {
-      const entries = getEntries();
-      const tbody = document.getElementById('entriesTable');
-      tbody.innerHTML = '';
-
-      entries.forEach(entry => {
-        const tr = document.createElement('tr');
-        const diffClass = entry.diffMinutes > 0 ? 'positive' : entry.diffMinutes < 0 ? 'negative' : '';
-        
-        tr.innerHTML = `
-          <td>${entry.date}</td>
-          <td>${entry.start} – ${entry.end}</td>
-          <td>${entry.pause} min</td>
-          <td>${formatHoursMinutes(entry.netMinutes)}</td>
-          <td class="${diffClass}">${formatHoursMinutes(entry.diffMinutes, true)}</td>
-          <td><button class="btn-delete" onclick="deleteEntry(${entry.id})">Löschen</button></td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
-
-    // Initiale Ausführung
-    updatePreview();
-    updateLiveTimer();
-    renderTable();
-  </script>
-</body>
-</html>
