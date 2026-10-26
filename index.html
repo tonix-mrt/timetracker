@@ -179,6 +179,39 @@
     .positive { color: var(--positive); }
     .negative { color: var(--negative); }
 
+    /* Aufklappbarer Historien-Bereich */
+    details.history-accordion {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #ffffff;
+      overflow: hidden;
+      margin-top: 1rem;
+    }
+
+    summary.history-summary {
+      padding: 0.85rem 1rem;
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--text);
+      cursor: pointer;
+      background: #f8fafc;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      outline: none;
+      transition: background 0.15s ease;
+    }
+
+    summary.history-summary:hover {
+      background: #f1f5f9;
+    }
+
+    .history-content {
+      padding: 0.5rem 1rem 1rem;
+      overflow-x: auto;
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
@@ -207,6 +240,13 @@
 
     .btn-delete:hover {
       text-decoration: underline;
+    }
+
+    .empty-note {
+      text-align: center;
+      color: #94a3b8;
+      padding: 1.5rem 0;
+      font-size: 0.9rem;
     }
   </style>
 </head>
@@ -267,20 +307,29 @@
       </div>
     </div>
 
-    <!-- Gespeicherte Tage -->
-    <table>
-      <thead>
-        <tr>
-          <th>Datum</th>
-          <th>Arbeitszeit</th>
-          <th>Pause</th>
-          <th>Netto</th>
-          <th>Diff.</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody id="entriesTable"></tbody>
-    </table>
+    <!-- Aufklappbare Historie -->
+    <details class="history-accordion" id="historyDetails">
+      <summary class="history-summary">
+        <span>Gespeicherte Historie</span>
+        <span id="historyCountBadge" style="font-size: 0.85rem; color: #64748b; font-weight: normal;">(0 Einträge)</span>
+      </summary>
+      <div class="history-content">
+        <table>
+          <thead>
+            <tr>
+              <th>Datum</th>
+              <th>Arbeitszeit</th>
+              <th>Pause</th>
+              <th>Netto</th>
+              <th>Diff.</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="entriesTable"></tbody>
+        </table>
+        <div id="emptyNote" class="empty-note" style="display: none;">Noch keine Einträge gespeichert.</div>
+      </div>
+    </details>
   </div>
 
   <script>
@@ -292,7 +341,7 @@
     const endInput = document.getElementById('endTime');
     const breakInput = document.getElementById('breakTime');
 
-    // Sofortige Neuberechnung bei jeder Nutzer-Aktion
+    // Sofortige Neuberechnung bei jeder Eingabe
     ['input', 'change', 'keyup'].forEach(eventName => {
       startInput.addEventListener(eventName, triggerUpdate);
       endInput.addEventListener(eventName, triggerUpdate);
@@ -356,7 +405,6 @@
         return;
       }
 
-      // Zielzeit: Entweder die manuell eingegebene Endzeit oder 8h + Pause
       let targetMin = manualEndMin;
       let isAutoCalculated = false;
 
@@ -373,7 +421,6 @@
         ? `Soll-Feierabend (8h + Pause): ${targetFormatted} Uhr`
         : `Ziel-Feierabend laut Endzeit: ${targetFormatted} Uhr`;
 
-      // Jetzt-Zeit ermitteln
       const now = new Date();
       const currentSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
       const startSeconds = startMin * 60;
@@ -381,7 +428,6 @@
 
       const diffSeconds = targetSeconds - currentSeconds;
 
-      // Fortschritt
       const totalSpanSeconds = targetSeconds - startSeconds;
       let progress = 0;
       if (totalSpanSeconds > 0) {
@@ -390,7 +436,6 @@
       progress = Math.max(0, Math.min(100, progress));
       progressEl.style.width = `${progress}%`;
 
-      // Countdown Anzeige
       if (diffSeconds > 0) {
         headingEl.textContent = "Verbleibende Zeit bis Feierabend";
         const sec = Math.floor(diffSeconds % 60);
@@ -411,7 +456,6 @@
       }
     }
 
-    // Sekündliches Weiterlaufen lassen
     setInterval(updateLiveTimer, 1000);
 
     // --- Tabellen- & Vorschau-Logik ---
@@ -494,7 +538,18 @@
     function renderTable() {
       const entries = getEntries();
       const tbody = document.getElementById('entriesTable');
+      const emptyNote = document.getElementById('emptyNote');
+      const countBadge = document.getElementById('historyCountBadge');
+
       tbody.innerHTML = '';
+      countBadge.textContent = `(${entries.length} ${entries.length === 1 ? 'Eintrag' : 'Einträge'})`;
+
+      if (entries.length === 0) {
+        emptyNote.style.display = 'block';
+        return;
+      }
+      
+      emptyNote.style.display = 'none';
 
       entries.forEach(entry => {
         const tr = document.createElement('tr');
@@ -512,7 +567,7 @@
       });
     }
 
-    // Initiale Ausführung beim Laden der Seite
+    // Initialer Aufruf
     triggerUpdate();
     renderTable();
   </script>
