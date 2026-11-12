@@ -10,6 +10,10 @@
       --card-bg: #ffffff;
       --primary: #2563eb;
       --primary-hover: #1d4ed8;
+      --secondary-bg: #eff6ff;
+      --secondary-hover: #dbeafe;
+      --secondary-border: #bfdbfe;
+      --secondary-text: #1d4ed8;
       --text: #1f2937;
       --text-muted: #64748b;
       --label-color: #4b5563;
@@ -33,6 +37,10 @@
       --card-bg: #1e293b;
       --primary: #3b82f6;
       --primary-hover: #2563eb;
+      --secondary-bg: #1e3a8a33;
+      --secondary-hover: #1e3a8a55;
+      --secondary-border: #1d4ed8;
+      --secondary-text: #60a5fa;
       --text: #f1f5f9;
       --text-muted: #94a3b8;
       --label-color: #cbd5e1;
@@ -155,7 +163,7 @@
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
       gap: 1rem;
-      margin-bottom: 0.75rem;
+      margin-bottom: 1rem;
     }
 
     .field {
@@ -171,7 +179,7 @@
     }
 
     input {
-      padding: 0.5rem 0.65rem;
+      padding: 0.55rem 0.65rem;
       border: 1px solid var(--border);
       border-radius: 6px;
       font-size: 0.95rem;
@@ -186,24 +194,28 @@
       border-color: transparent;
     }
 
-    .quick-actions {
+    .button-group {
       display: flex;
-      justify-content: flex-end;
-      margin-bottom: 1rem;
+      flex-direction: column;
+      gap: 0.65rem;
+      margin-bottom: 1.5rem;
     }
 
-    .btn-link {
-      background: none;
-      border: none;
-      color: var(--primary);
-      font-size: 0.82rem;
+    .btn-secondary {
+      background: var(--secondary-bg);
+      color: var(--secondary-text);
+      border: 1px solid var(--secondary-border);
+      border-radius: 6px;
+      padding: 0.7rem 1rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      width: 100%;
       cursor: pointer;
-      text-decoration: underline;
-      padding: 0;
+      transition: background 0.15s, border-color 0.15s;
     }
 
-    .btn-link:hover {
-      color: var(--primary-hover);
+    .btn-secondary:hover {
+      background: var(--secondary-hover);
     }
 
     .btn-primary {
@@ -212,10 +224,10 @@
       cursor: pointer;
       border: none;
       border-radius: 6px;
-      padding: 0.65rem 1rem;
+      padding: 0.7rem 1rem;
+      font-size: 0.95rem;
       font-weight: 600;
       width: 100%;
-      margin-bottom: 1.5rem;
       transition: background 0.15s;
     }
 
@@ -360,11 +372,10 @@
       </div>
     </div>
 
-    <div class="quick-actions">
-      <button type="button" class="btn-link" onclick="setExactTargetEnd()">Endzeit auf exakt 8h-Soll setzen</button>
+    <div class="button-group">
+      <button type="button" class="btn-secondary" onclick="setExactTargetEnd()">Endzeit auf exakt 8h-Soll setzen</button>
+      <button type="button" class="btn-primary" onclick="addEntry()">Eintrag in Historie speichern</button>
     </div>
-
-    <button class="btn-primary" onclick="addEntry()">Eintrag in Historie speichern</button>
 
     <!-- Vorschau-Berechnung -->
     <div class="summary-card">
@@ -409,6 +420,7 @@
 
   <script>
     const TARGET_MINUTES = 8 * 60; // 8 Stunden Soll
+    let timerInterval = null;
 
     // --- Dark Mode Logik ---
     function initTheme() {
@@ -448,22 +460,32 @@
     const endInput = document.getElementById('endTime');
     const breakInput = document.getElementById('breakTime');
 
-    ['input', 'change', 'keyup'].forEach(eventName => {
-      startInput.addEventListener(eventName, triggerUpdate);
-      endInput.addEventListener(eventName, triggerUpdate);
-      breakInput.addEventListener(eventName, triggerUpdate);
+    // Sofortige Reaktion auf jede Eingabe- oder Fokusänderung
+    [startInput, endInput, breakInput].forEach(el => {
+      ['input', 'change', 'keyup', 'blur'].forEach(eventName => {
+        el.addEventListener(eventName, triggerUpdate);
+      });
     });
 
     function triggerUpdate() {
       updatePreview();
       updateLiveTimer();
+      restartTimerInterval();
+    }
+
+    function restartTimerInterval() {
+      if (timerInterval) clearInterval(timerInterval);
+      timerInterval = setInterval(updateLiveTimer, 1000);
     }
 
     function parseMinutes(timeStr) {
       if (!timeStr) return null;
       const parts = timeStr.split(':');
       if (parts.length < 2) return null;
-      return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+      const h = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10);
+      if (isNaN(h) || isNaN(m)) return null;
+      return h * 60 + m;
     }
 
     function formatHoursMinutes(totalMinutes, showSign = false) {
@@ -561,8 +583,6 @@
         countdownEl.style.color = "var(--positive)";
       }
     }
-
-    setInterval(updateLiveTimer, 1000);
 
     // --- Tabellen- & Vorschau-Logik ---
     function calculateCurrentValues() {
