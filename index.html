@@ -11,7 +11,6 @@
       --primary: #2563eb;
       --primary-hover: #1d4ed8;
       --secondary-bg: #eff6ff;
-      --secondary-hover: #dbeafe;
       --secondary-border: #bfdbfe;
       --secondary-text: #1d4ed8;
       --text: #1f2937;
@@ -38,7 +37,6 @@
       --primary: #3b82f6;
       --primary-hover: #2563eb;
       --secondary-bg: #1e3a8a33;
-      --secondary-hover: #1e3a8a55;
       --secondary-border: #1d4ed8;
       --secondary-text: #60a5fa;
       --text: #f1f5f9;
@@ -178,7 +176,9 @@
       color: var(--label-color);
     }
 
-    input {
+    input[type="date"],
+    input[type="time"],
+    input[type="number"] {
       padding: 0.55rem 0.65rem;
       border: 1px solid var(--border);
       border-radius: 6px;
@@ -194,28 +194,78 @@
       border-color: transparent;
     }
 
-    .button-group {
-      display: flex;
-      flex-direction: column;
-      gap: 0.65rem;
-      margin-bottom: 1.5rem;
+    /* Arbeitszeit-Slider Bereich */
+    .slider-box {
+      background: var(--summary-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin-bottom: 1rem;
     }
 
-    .btn-secondary {
+    .slider-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .slider-value-badge {
       background: var(--secondary-bg);
       color: var(--secondary-text);
       border: 1px solid var(--secondary-border);
+      padding: 0.2rem 0.6rem;
       border-radius: 6px;
-      padding: 0.7rem 1rem;
-      font-size: 0.95rem;
-      font-weight: 600;
-      width: 100%;
-      cursor: pointer;
-      transition: background 0.15s, border-color 0.15s;
+      font-weight: 700;
+      font-size: 0.9rem;
+      font-variant-numeric: tabular-nums;
     }
 
-    .btn-secondary:hover {
-      background: var(--secondary-hover);
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      background: var(--border);
+      border-radius: 999px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--primary);
+      cursor: pointer;
+      border: 2px solid var(--card-bg);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+      transition: transform 0.1s ease, background 0.15s ease;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      background: var(--primary-hover);
+      transform: scale(1.1);
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--primary);
+      cursor: pointer;
+      border: 2px solid var(--card-bg);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+
+    .slider-ticks {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.35rem;
     }
 
     .btn-primary {
@@ -228,6 +278,7 @@
       font-size: 0.95rem;
       font-weight: 600;
       width: 100%;
+      margin-bottom: 1.5rem;
       transition: background 0.15s;
     }
 
@@ -372,16 +423,30 @@
       </div>
     </div>
 
-    <div class="button-group">
-      <button type="button" class="btn-secondary" onclick="setExactTargetEnd()">Endzeit auf exakt 8h-Soll setzen</button>
-      <button type="button" class="btn-primary" onclick="addEntry()">Eintrag in Historie speichern</button>
+    <!-- Arbeitszeit-Slider -->
+    <div class="slider-box">
+      <div class="slider-header">
+        <label for="targetHoursSlider">Soll-Arbeitszeit einstellen</label>
+        <span class="slider-value-badge" id="sliderValueDisplay">08:00 h</span>
+      </div>
+      <input type="range" id="targetHoursSlider" min="0" max="720" step="15" value="480">
+      <div class="slider-ticks">
+        <span>0h</span>
+        <span>4h</span>
+        <span>6h</span>
+        <span>8h</span>
+        <span>10h</span>
+        <span>12h</span>
+      </div>
     </div>
+
+    <button type="button" class="btn-primary" onclick="addEntry()">Eintrag in Historie speichern</button>
 
     <!-- Vorschau-Berechnung -->
     <div class="summary-card">
       <div>
         <div class="summary-label">Soll</div>
-        <div class="summary-value">08:00 h</div>
+        <div class="summary-value" id="previewTarget">08:00 h</div>
       </div>
       <div>
         <div class="summary-label">Ist (Vorschau)</div>
@@ -419,7 +484,7 @@
   </div>
 
   <script>
-    const TARGET_MINUTES = 8 * 60; // 8 Stunden Soll
+    let targetMinutes = parseInt(localStorage.getItem('tracker_target_minutes') || '480', 10);
     let timerInterval = null;
 
     // --- Dark Mode Logik ---
@@ -438,7 +503,7 @@
       localStorage.setItem('tracker_theme', theme);
       const iconEl = document.getElementById('themeIcon');
       const labelEl = document.getElementById('themeLabel');
-      
+
       if (theme === 'dark') {
         iconEl.textContent = '☀️';
         labelEl.textContent = 'Hell';
@@ -459,8 +524,19 @@
     const startInput = document.getElementById('startTime');
     const endInput = document.getElementById('endTime');
     const breakInput = document.getElementById('breakTime');
+    const targetSlider = document.getElementById('targetHoursSlider');
 
-    // Bei Änderung von Anfangszeit oder Pause automatisch Endzeit auf 8h-Soll anpassen
+    targetSlider.value = targetMinutes;
+
+    // Slider-Änderungen verarbeiten
+    targetSlider.addEventListener('input', () => {
+      targetMinutes = parseInt(targetSlider.value, 10) || 0;
+      localStorage.setItem('tracker_target_minutes', targetMinutes);
+      updateSliderDisplay();
+      setExactTargetEnd();
+    });
+
+    // Bei Änderung von Anfangszeit oder Pause automatisch Endzeit auf eingestellte Soll-Zeit anpassen
     [startInput, breakInput].forEach(el => {
       ['input', 'change', 'keyup', 'blur'].forEach(eventName => {
         el.addEventListener(eventName, () => {
@@ -473,6 +549,12 @@
     ['input', 'change', 'keyup', 'blur'].forEach(eventName => {
       endInput.addEventListener(eventName, triggerUpdate);
     });
+
+    function updateSliderDisplay() {
+      const formatted = formatHoursMinutes(targetMinutes);
+      document.getElementById('sliderValueDisplay').textContent = formatted;
+      document.getElementById('previewTarget').textContent = formatted;
+    }
 
     function triggerUpdate() {
       updatePreview();
@@ -499,7 +581,7 @@
       const absMinutes = Math.abs(totalMinutes);
       const h = Math.floor(absMinutes / 60).toString().padStart(2, '0');
       const m = (absMinutes % 60).toString().padStart(2, '0');
-      
+
       let sign = '';
       if (showSign) {
         if (totalMinutes > 0) sign = '+';
@@ -516,11 +598,11 @@
         return;
       }
       const pauseMin = parseInt(breakInput.value, 10) || 0;
-      
-      const targetTotalMin = (startMin + TARGET_MINUTES + pauseMin) % (24 * 60);
+
+      const targetTotalMin = (startMin + targetMinutes + pauseMin) % (24 * 60);
       const h = Math.floor(targetTotalMin / 60).toString().padStart(2, '0');
       const m = (targetTotalMin % 60).toString().padStart(2, '0');
-      
+
       endInput.value = `${h}:${m}`;
       triggerUpdate();
     }
@@ -547,7 +629,7 @@
       let isAutoCalculated = false;
 
       if (targetMin === null) {
-        targetMin = startMin + TARGET_MINUTES + pauseMin;
+        targetMin = startMin + targetMinutes + pauseMin;
         isAutoCalculated = true;
       }
 
@@ -556,7 +638,7 @@
       const targetFormatted = `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
 
       targetTimeEl.textContent = isAutoCalculated
-        ? `Soll-Feierabend (8h + Pause): ${targetFormatted} Uhr`
+        ? `Soll-Feierabend (${formatHoursMinutes(targetMinutes)} + Pause): ${targetFormatted} Uhr`
         : `Ziel-Feierabend laut Endzeit: ${targetFormatted} Uhr`;
 
       const now = new Date();
@@ -579,7 +661,7 @@
         const sec = Math.floor(diffSeconds % 60);
         const min = Math.floor((diffSeconds / 60) % 60);
         const hrs = Math.floor(diffSeconds / 3600);
-        countdownEl.textContent = 
+        countdownEl.textContent =
           `${hrs.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
         countdownEl.style.color = "var(--widget-text)";
       } else {
@@ -588,7 +670,7 @@
         const sec = Math.floor(overSeconds % 60);
         const min = Math.floor((overSeconds / 60) % 60);
         const hrs = Math.floor(overSeconds / 3600);
-        countdownEl.textContent = 
+        countdownEl.textContent =
           `+${hrs.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
         countdownEl.style.color = "var(--positive)";
       }
@@ -606,7 +688,7 @@
 
       const grossMinutes = end - start;
       const netMinutes = Math.max(0, grossMinutes - pause);
-      const diffMinutes = netMinutes - TARGET_MINUTES;
+      const diffMinutes = netMinutes - targetMinutes;
 
       return { netMinutes, diffMinutes };
     }
@@ -684,13 +766,13 @@
         emptyNote.style.display = 'block';
         return;
       }
-      
+
       emptyNote.style.display = 'none';
 
       entries.forEach(entry => {
         const tr = document.createElement('tr');
         const diffClass = entry.diffMinutes > 0 ? 'positive' : entry.diffMinutes < 0 ? 'negative' : '';
-        
+
         tr.innerHTML = `
           <td>${entry.date}</td>
           <td>${entry.start} – ${entry.end}</td>
@@ -705,6 +787,7 @@
 
     // Start-Initialisierung
     initTheme();
+    updateSliderDisplay();
     setExactTargetEnd();
     renderTable();
   </script>
