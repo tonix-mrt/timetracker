@@ -2,11 +2,14 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Arbeitszeit-Tracker mit Dark Mode</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Arbeitszeit-Tracker</title>
   <style>
     *, *::before, *::after {
       box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
     }
 
     :root {
@@ -61,14 +64,20 @@
       --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
     }
 
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      overflow-x: hidden;
+    }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
       background: var(--bg);
       color: var(--text);
       display: flex;
       justify-content: center;
-      padding: 2rem 1rem;
-      margin: 0;
+      padding: max(1rem, env(safe-area-inset-top)) 1rem max(1.5rem, env(safe-area-inset-bottom));
       transition: background 0.2s ease, color 0.2s ease;
     }
 
@@ -77,7 +86,7 @@
       width: 100%;
       max-width: 650px;
       padding: 1.5rem 2rem;
-      border-radius: 12px;
+      border-radius: 14px;
       box-shadow: var(--shadow);
       border: 1px solid var(--border);
       transition: background 0.2s ease, border-color 0.2s ease;
@@ -87,12 +96,14 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 0.75rem;
       margin-bottom: 1.25rem;
     }
 
     h1 {
       margin: 0;
-      font-size: 1.5rem;
+      font-size: 1.45rem;
+      line-height: 1.2;
     }
 
     /* Dark Mode Umschalter */
@@ -100,14 +111,16 @@
       background: var(--summary-bg);
       border: 1px solid var(--border);
       color: var(--text);
-      font-size: 1rem;
-      padding: 0.45rem 0.8rem;
+      font-size: 0.95rem;
+      min-height: 40px;
+      padding: 0.45rem 0.85rem;
       border-radius: 8px;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
       gap: 0.4rem;
       font-weight: 500;
+      flex-shrink: 0;
       transition: background 0.15s, border-color 0.15s;
     }
 
@@ -119,15 +132,15 @@
     .timer-widget {
       background: var(--widget-bg);
       color: var(--widget-text);
-      padding: 1.25rem;
-      border-radius: 8px;
-      margin-bottom: 1.5rem;
+      padding: 1.25rem 1rem;
+      border-radius: 10px;
+      margin-bottom: 1.25rem;
       text-align: center;
       border: 1px solid var(--border);
     }
 
     .timer-label {
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       text-transform: uppercase;
       letter-spacing: 0.05em;
       color: var(--widget-muted);
@@ -135,14 +148,15 @@
     }
 
     .timer-countdown {
-      font-size: 2.2rem;
+      font-size: clamp(1.85rem, 7vw, 2.35rem);
       font-weight: 800;
       font-variant-numeric: tabular-nums;
-      margin: 0.25rem 0;
+      margin: 0.2rem 0;
+      line-height: 1.15;
     }
 
     .timer-sub {
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       color: var(--widget-sub);
     }
 
@@ -161,10 +175,11 @@
       transition: width 0.2s ease;
     }
 
+    /* Eingabefelder - iOS-kompatibles Grid */
     .form-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-      gap: 1rem;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0.85rem;
       margin-bottom: 1rem;
     }
 
@@ -172,26 +187,46 @@
       display: flex;
       flex-direction: column;
       gap: 0.35rem;
+      min-width: 0;
     }
 
     label {
-      font-size: 0.85rem;
+      font-size: 0.82rem;
       font-weight: 600;
       color: var(--label-color);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
+    /* 16px Schriftgröße verhindert das automatische Reinzoomen auf dem iPhone */
     input[type="date"],
     input[type="time"],
     input[type="number"] {
+      -webkit-appearance: none;
+      appearance: none;
+      display: block;
       width: 100%;
-      padding: 0.55rem 0.65rem;
+      min-width: 0;
+      max-width: 100%;
+      height: 44px;
+      padding: 0.5rem 0.65rem;
       border: 1px solid var(--border);
-      border-radius: 6px;
-      font-size: 0.95rem;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 16px;
+      line-height: 1.2;
       background: var(--input-bg);
       color: var(--text);
       color-scheme: light dark;
       transition: background 0.2s, border-color 0.2s, color 0.2s;
+    }
+
+    /* iOS Safari Date/Time Innen-Alignment fixen */
+    input[type="date"]::-webkit-date-and-time-value,
+    input[type="time"]::-webkit-date-and-time-value {
+      text-align: left;
+      margin: 0;
     }
 
     input:focus {
@@ -203,8 +238,8 @@
     .slider-box {
       background: var(--summary-bg);
       border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 1rem 1.15rem 1.1rem;
+      border-radius: 10px;
+      padding: 1rem 1.1rem 1.05rem;
       margin-bottom: 1rem;
     }
 
@@ -212,11 +247,13 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 0.75rem;
+      gap: 0.5rem;
+      margin-bottom: 0.85rem;
     }
 
     .slider-header label {
       margin: 0;
+      font-size: 0.85rem;
     }
 
     .slider-value-badge {
@@ -232,57 +269,59 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      flex-shrink: 0;
     }
 
     .slider-track-wrapper {
-      padding: 0 9px;
+      padding: 0 12px;
     }
 
     input[type="range"] {
       -webkit-appearance: none;
       appearance: none;
       display: block;
-      width: calc(100% + 18px);
-      margin: 0 -9px;
-      height: 6px;
+      width: calc(100% + 24px);
+      margin: 0 -12px;
+      height: 8px;
       background: var(--border);
       border-radius: 999px;
       outline: none;
       cursor: pointer;
+      touch-action: pan-y;
     }
 
     input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance: none;
       appearance: none;
-      width: 18px;
-      height: 18px;
+      width: 24px;
+      height: 24px;
       border-radius: 50%;
       background: var(--primary);
       cursor: pointer;
       border: 2px solid var(--card-bg);
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
       transition: transform 0.1s ease, background 0.15s ease;
     }
 
-    input[type="range"]::-webkit-slider-thumb:hover {
+    input[type="range"]::-webkit-slider-thumb:active {
       background: var(--primary-hover);
-      transform: scale(1.1);
+      transform: scale(1.12);
     }
 
     input[type="range"]::-moz-range-thumb {
-      width: 18px;
-      height: 18px;
+      width: 24px;
+      height: 24px;
       border-radius: 50%;
       background: var(--primary);
       cursor: pointer;
       border: 2px solid var(--card-bg);
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
     }
 
     .slider-ticks {
       position: relative;
-      height: 1.1rem;
-      margin-top: 0.5rem;
+      height: 1.15rem;
+      margin-top: 0.6rem;
       font-size: 0.75rem;
       color: var(--text-muted);
       font-variant-numeric: tabular-nums;
@@ -308,12 +347,13 @@
       color: #fff;
       cursor: pointer;
       border: none;
-      border-radius: 6px;
+      border-radius: 8px;
+      min-height: 46px;
       padding: 0.75rem 1rem;
-      font-size: 0.95rem;
+      font-size: 1rem;
       font-weight: 600;
       width: 100%;
-      margin-bottom: 1.5rem;
+      margin-bottom: 1.25rem;
       transition: background 0.15s;
     }
 
@@ -324,12 +364,12 @@
     .summary-card {
       background: var(--summary-bg);
       border: 1px solid var(--summary-border);
-      border-radius: 8px;
-      padding: 1rem;
-      margin-bottom: 1.5rem;
+      border-radius: 10px;
+      padding: 0.9rem 0.5rem;
+      margin-bottom: 1.25rem;
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 0.5rem;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.35rem;
       align-items: center;
       text-align: center;
     }
@@ -339,16 +379,17 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
+      min-width: 0;
     }
 
     .summary-label {
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       color: var(--text-muted);
-      margin-bottom: 0.3rem;
+      margin-bottom: 0.25rem;
     }
 
     .summary-value {
-      font-size: 1.2rem;
+      font-size: clamp(1rem, 4vw, 1.2rem);
       font-weight: 700;
       line-height: 1.2;
       font-variant-numeric: tabular-nums;
@@ -360,14 +401,15 @@
     /* Aufklappbarer Historien-Bereich */
     details.history-accordion {
       border: 1px solid var(--border);
-      border-radius: 8px;
+      border-radius: 10px;
       background: var(--card-bg);
       overflow: hidden;
-      margin-top: 1rem;
+      margin-top: 0.75rem;
     }
 
     summary.history-summary {
-      padding: 0.85rem 1rem;
+      padding: 0.9rem 1rem;
+      min-height: 46px;
       font-weight: 600;
       font-size: 0.95rem;
       color: var(--text);
@@ -377,8 +419,14 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 0.5rem;
       outline: none;
+      list-style: none;
       transition: background 0.15s ease;
+    }
+
+    summary.history-summary::-webkit-details-marker {
+      display: none;
     }
 
     summary.history-summary:hover {
@@ -386,21 +434,23 @@
     }
 
     .history-content {
-      padding: 0.5rem 1rem 1rem;
+      padding: 0.5rem 0.75rem 1rem;
       overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
     }
 
     th, td {
-      padding: 0.6rem 0.5rem;
+      padding: 0.6rem 0.4rem;
       text-align: left;
       border-bottom: 1px solid var(--border);
       font-variant-numeric: tabular-nums;
+      white-space: nowrap;
     }
 
     th {
@@ -413,8 +463,9 @@
       color: var(--negative);
       border: none;
       cursor: pointer;
-      padding: 0.2rem 0.5rem;
-      font-size: 0.8rem;
+      padding: 0.35rem 0.5rem;
+      min-height: 32px;
+      font-size: 0.82rem;
     }
 
     .btn-delete:hover {
@@ -424,8 +475,38 @@
     .empty-note {
       text-align: center;
       color: var(--text-muted);
-      padding: 1.5rem 0;
+      padding: 1.25rem 0;
       font-size: 0.9rem;
+    }
+
+    /* Mobile Anpassungen für iPhone & Smartphones */
+    @media (max-width: 560px) {
+      body {
+        padding: max(0.75rem, env(safe-area-inset-top)) 0.65rem max(1.25rem, env(safe-area-inset-bottom));
+      }
+
+      .container {
+        padding: 1.15rem 1rem;
+        border-radius: 12px;
+      }
+
+      h1 {
+        font-size: 1.25rem;
+      }
+
+      /* 2x2 Raster für optimale Ausnutzung auf iPhone-Breite */
+      .form-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.75rem;
+      }
+
+      .timer-widget {
+        padding: 1rem 0.75rem;
+      }
+
+      .timer-sub {
+        font-size: 0.82rem;
+      }
     }
   </style>
 </head>
@@ -465,8 +546,8 @@
         <input type="time" id="endTime" value="16:30">
       </div>
       <div class="field">
-        <label for="breakTime">Pause (Minuten)</label>
-        <input type="number" id="breakTime" value="30" min="0" step="5">
+        <label for="breakTime">Pause (Min.)</label>
+        <input type="number" id="breakTime" inputmode="numeric" value="30" min="0" step="5">
       </div>
     </div>
 
@@ -519,7 +600,7 @@
           <thead>
             <tr>
               <th>Datum</th>
-              <th>Arbeitszeit</th>
+              <th>Zeit</th>
               <th>Pause</th>
               <th>Netto</th>
               <th>Diff.</th>
@@ -610,13 +691,11 @@
     dateInput.value = getLocalTodayISO();
     targetSlider.value = targetMinutes;
 
-    // Beim Datumswechsel die gemerkte Startzeit für diesen Tag laden
     dateInput.addEventListener('change', () => {
       loadDailyStartTime(dateInput.value);
       setExactTargetEnd();
     });
 
-    // Slider-Änderungen verarbeiten
     targetSlider.addEventListener('input', () => {
       targetMinutes = parseInt(targetSlider.value, 10) || 0;
       localStorage.setItem('tracker_target_minutes', targetMinutes);
@@ -624,22 +703,17 @@
       setExactTargetEnd();
     });
 
-    // Anfangszeit ändern -> für aktuellen Tag merken + Endzeit anpassen
-    ['input', 'change', 'keyup', 'blur'].forEach(eventName => {
-      startInput.addEventListener(eventName, () => {
-        saveDailyStartTime(dateInput.value, startInput.value);
-        setExactTargetEnd();
+    [startInput, breakInput].forEach(el => {
+      ['input', 'change', 'keyup', 'blur'].forEach(eventName => {
+        el.addEventListener(eventName, () => {
+          if (el === startInput) {
+            saveDailyStartTime(dateInput.value, startInput.value);
+          }
+          setExactTargetEnd();
+        });
       });
     });
 
-    // Pause ändern -> Endzeit anpassen
-    ['input', 'change', 'keyup', 'blur'].forEach(eventName => {
-      breakInput.addEventListener(eventName, () => {
-        setExactTargetEnd();
-      });
-    });
-
-    // Bei manueller Änderung der Endzeit nur Vorschau & Timer aktualisieren
     ['input', 'change', 'keyup', 'blur'].forEach(eventName => {
       endInput.addEventListener(eventName, triggerUpdate);
     });
@@ -871,8 +945,8 @@
 
         tr.innerHTML = `
           <td>${entry.date}</td>
-          <td>${entry.start} – ${entry.end}</td>
-          <td>${entry.pause} min</td>
+          <td>${entry.start}–${entry.end}</td>
+          <td>${entry.pause}m</td>
           <td>${formatHoursMinutes(entry.netMinutes)}</td>
           <td class="${diffClass}">${formatHoursMinutes(entry.diffMinutes, true)}</td>
           <td><button class="btn-delete" onclick="deleteEntry(${entry.id})">Löschen</button></td>
