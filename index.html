@@ -460,11 +460,18 @@
     const endInput = document.getElementById('endTime');
     const breakInput = document.getElementById('breakTime');
 
-    // Sofortige Reaktion auf jede Eingabe- oder Fokusänderung
-    [startInput, endInput, breakInput].forEach(el => {
+    // Bei Änderung von Anfangszeit oder Pause automatisch Endzeit auf 8h-Soll anpassen
+    [startInput, breakInput].forEach(el => {
       ['input', 'change', 'keyup', 'blur'].forEach(eventName => {
-        el.addEventListener(eventName, triggerUpdate);
+        el.addEventListener(eventName, () => {
+          setExactTargetEnd();
+        });
       });
+    });
+
+    // Bei manueller Änderung der Endzeit nur Vorschau & Timer aktualisieren
+    ['input', 'change', 'keyup', 'blur'].forEach(eventName => {
+      endInput.addEventListener(eventName, triggerUpdate);
     });
 
     function triggerUpdate() {
@@ -504,7 +511,10 @@
 
     function setExactTargetEnd() {
       const startMin = parseMinutes(startInput.value);
-      if (startMin === null) return;
+      if (startMin === null) {
+        triggerUpdate();
+        return;
+      }
       const pauseMin = parseInt(breakInput.value, 10) || 0;
       
       const targetTotalMin = (startMin + TARGET_MINUTES + pauseMin) % (24 * 60);
@@ -695,7 +705,7 @@
 
     // Start-Initialisierung
     initTheme();
-    triggerUpdate();
+    setExactTargetEnd();
     renderTable();
   </script>
 </body>
