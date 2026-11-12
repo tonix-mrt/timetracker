@@ -235,7 +235,7 @@
     }
 
     .slider-track-wrapper {
-      padding: 0 9px; /* Gleicht exakt die halbe Thumb-Breite (18px / 2) aus */
+      padding: 0 9px;
     }
 
     input[type="range"] {
@@ -279,7 +279,6 @@
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     }
 
-    /* Exakte Positionierung der Skalenpunkte */
     .slider-ticks {
       position: relative;
       height: 1.1rem;
@@ -538,6 +537,9 @@
     let targetMinutes = parseInt(localStorage.getItem('tracker_target_minutes') || '480', 10);
     let timerInterval = null;
 
+    const DEFAULT_START_TIME = '08:00';
+    const DAILY_START_STORAGE_KEY = 'tracker_daily_start_times';
+
     // --- Dark Mode Logik ---
     function initTheme() {
       const savedTheme = localStorage.getItem('tracker_theme');
@@ -569,15 +571,50 @@
       setTheme(currentTheme === 'dark' ? 'light' : 'dark');
     }
 
-    // --- Formular & Initialisierung ---
-    document.getElementById('entryDate').valueAsDate = new Date();
+    // --- Tagesbezogene Startzeit speichern & laden ---
+    function getLocalTodayISO() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
 
+    function getSavedStartTimes() {
+      try {
+        return JSON.parse(localStorage.getItem(DAILY_START_STORAGE_KEY) || '{}');
+      } catch {
+        return {};
+      }
+    }
+
+    function saveDailyStartTime(dateStr, startTimeStr) {
+      if (!dateStr || !startTimeStr) return;
+      const stored = getSavedStartTimes();
+      stored[dateStr] = startTimeStr;
+      localStorage.setItem(DAILY_START_STORAGE_KEY, JSON.stringify(stored));
+    }
+
+    function loadDailyStartTime(dateStr) {
+      const stored = getSavedStartTimes();
+      startInput.value = stored[dateStr] || DEFAULT_START_TIME;
+    }
+
+    // --- Formular & Initialisierung ---
+    const dateInput = document.getElementById('entryDate');
     const startInput = document.getElementById('startTime');
     const endInput = document.getElementById('endTime');
     const breakInput = document.getElementById('breakTime');
     const targetSlider = document.getElementById('targetHoursSlider');
 
+    dateInput.value = getLocalTodayISO();
     targetSlider.value = targetMinutes;
+
+    // Beim Datumswechsel die gemerkte Startzeit für diesen Tag laden
+    dateInput.addEventListener('change', () => {
+      loadDailyStartTime(dateInput.value);
+      setExactTargetEnd();
+    });
 
     // Slider-Änderungen verarbeiten
     targetSlider.addEventListener('input', () => {
@@ -587,12 +624,18 @@
       setExactTargetEnd();
     });
 
-    // Bei Änderung von Anfangszeit oder Pause automatisch Endzeit auf eingestellte Soll-Zeit anpassen
-    [startInput, breakInput].forEach(el => {
-      ['input', 'change', 'keyup', 'blur'].forEach(eventName => {
-        el.addEventListener(eventName, () => {
-          setExactTargetEnd();
-        });
+    // Anfangszeit ändern -> für aktuellen Tag merken + Endzeit anpassen
+    ['input', 'change', 'keyup', 'blur'].forEach(eventName => {
+      startInput.addEventListener(eventName, () => {
+        saveDailyStartTime(dateInput.value, startInput.value);
+        setExactTargetEnd();
+      });
+    });
+
+    // Pause ändern -> Endzeit anpassen
+    ['input', 'change', 'keyup', 'blur'].forEach(eventName => {
+      breakInput.addEventListener(eventName, () => {
+        setExactTargetEnd();
       });
     });
 
@@ -778,11 +821,13 @@
         return;
       }
 
-      const date = document.getElementById('entryDate').value;
+      const date = dateInput.value;
       if (!date) {
         alert('Bitte wähle ein Datum aus.');
         return;
       }
+
+      saveDailyStartTime(date, startInput.value);
 
       const entry = {
         id: Date.now(),
@@ -838,6 +883,7 @@
 
     // Start-Initialisierung
     initTheme();
+    loadDailyStartTime(dateInput.value);
     updateSliderDisplay();
     setExactTargetEnd();
     renderTable();
