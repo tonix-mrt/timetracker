@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Arbeitszeit-Tracker mit Dark Mode</title>
   <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
     :root {
       --bg: #f4f6f8;
       --card-bg: #ffffff;
@@ -179,6 +183,7 @@
     input[type="date"],
     input[type="time"],
     input[type="number"] {
+      width: 100%;
       padding: 0.55rem 0.65rem;
       border: 1px solid var(--border);
       border-radius: 6px;
@@ -199,7 +204,7 @@
       background: var(--summary-bg);
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 0.85rem 1rem;
+      padding: 1rem 1.15rem 1.1rem;
       margin-bottom: 1rem;
     }
 
@@ -207,24 +212,38 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .slider-header label {
+      margin: 0;
     }
 
     .slider-value-badge {
       background: var(--secondary-bg);
       color: var(--secondary-text);
       border: 1px solid var(--secondary-border);
-      padding: 0.2rem 0.6rem;
+      padding: 0.25rem 0.65rem;
       border-radius: 6px;
       font-weight: 700;
       font-size: 0.9rem;
+      line-height: 1.2;
       font-variant-numeric: tabular-nums;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .slider-track-wrapper {
+      padding: 0 9px; /* Gleicht exakt die halbe Thumb-Breite (18px / 2) aus */
     }
 
     input[type="range"] {
       -webkit-appearance: none;
       appearance: none;
-      width: 100%;
+      display: block;
+      width: calc(100% + 18px);
+      margin: 0 -9px;
       height: 6px;
       background: var(--border);
       border-radius: 999px;
@@ -260,12 +279,29 @@
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     }
 
+    /* Exakte Positionierung der Skalenpunkte */
     .slider-ticks {
-      display: flex;
-      justify-content: space-between;
+      position: relative;
+      height: 1.1rem;
+      margin-top: 0.5rem;
       font-size: 0.75rem;
       color: var(--text-muted);
-      margin-top: 0.35rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .slider-ticks span {
+      position: absolute;
+      top: 0;
+      transform: translateX(-50%);
+      white-space: nowrap;
+    }
+
+    .slider-ticks span:first-child {
+      transform: translateX(0);
+    }
+
+    .slider-ticks span:last-child {
+      transform: translateX(-100%);
     }
 
     .btn-primary {
@@ -274,7 +310,7 @@
       cursor: pointer;
       border: none;
       border-radius: 6px;
-      padding: 0.7rem 1rem;
+      padding: 0.75rem 1rem;
       font-size: 0.95rem;
       font-weight: 600;
       width: 100%;
@@ -294,18 +330,29 @@
       margin-bottom: 1.5rem;
       display: grid;
       grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+      align-items: center;
       text-align: center;
+    }
+
+    .summary-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
     }
 
     .summary-label {
       font-size: 0.8rem;
       color: var(--text-muted);
-      margin-bottom: 0.25rem;
+      margin-bottom: 0.3rem;
     }
 
     .summary-value {
       font-size: 1.2rem;
       font-weight: 700;
+      line-height: 1.2;
+      font-variant-numeric: tabular-nums;
     }
 
     .positive { color: var(--positive); }
@@ -354,6 +401,7 @@
       padding: 0.6rem 0.5rem;
       text-align: left;
       border-bottom: 1px solid var(--border);
+      font-variant-numeric: tabular-nums;
     }
 
     th {
@@ -429,14 +477,17 @@
         <label for="targetHoursSlider">Soll-Arbeitszeit einstellen</label>
         <span class="slider-value-badge" id="sliderValueDisplay">08:00 h</span>
       </div>
-      <input type="range" id="targetHoursSlider" min="0" max="720" step="15" value="480">
-      <div class="slider-ticks">
-        <span>0h</span>
-        <span>4h</span>
-        <span>6h</span>
-        <span>8h</span>
-        <span>10h</span>
-        <span>12h</span>
+      <div class="slider-track-wrapper">
+        <input type="range" id="targetHoursSlider" min="0" max="720" step="15" value="480">
+        <div class="slider-ticks">
+          <span style="left: 0%;">0h</span>
+          <span style="left: 16.67%;">2h</span>
+          <span style="left: 33.33%;">4h</span>
+          <span style="left: 50%;">6h</span>
+          <span style="left: 66.67%;">8h</span>
+          <span style="left: 83.33%;">10h</span>
+          <span style="left: 100%;">12h</span>
+        </div>
       </div>
     </div>
 
@@ -444,15 +495,15 @@
 
     <!-- Vorschau-Berechnung -->
     <div class="summary-card">
-      <div>
+      <div class="summary-item">
         <div class="summary-label">Soll</div>
         <div class="summary-value" id="previewTarget">08:00 h</div>
       </div>
-      <div>
+      <div class="summary-item">
         <div class="summary-label">Ist (Vorschau)</div>
         <div class="summary-value" id="previewWork">08:00 h</div>
       </div>
-      <div>
+      <div class="summary-item">
         <div class="summary-label">Differenz</div>
         <div class="summary-value" id="previewDiff">±00:00 h</div>
       </div>
